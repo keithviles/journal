@@ -1,105 +1,116 @@
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Structured Journal</title>
+  <meta name="viewport" content=device-width, initial-scale=1.0 />
+  <title>Smart Journal</title>
   <script src="https://apis.google.com/js/api.js"></script>
   <script src="https://accounts.google.com/gsi/client" async defer></script>
   <style>
-    :root { --spacing: 1rem; }
     body {
-      font-family: system-ui, sans-serif;
-      padding: var(--spacing);
+      font-family: sans-serif;
       margin: 0;
-      background-color: #f9f9f9;
-      color: #333;
+      padding: 1rem;
+      background: #f5f5f5;
     }
     .container {
       max-width: 700px;
       margin: auto;
-      background: #fff;
-      padding: calc(var(--spacing) * 1.5);
-      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+      background: white;
+      padding: 1rem;
       border-radius: 8px;
+      box-shadow: 0 0 10px rgba(0,0,0,0.05);
     }
-    h2 { text-align: center; }
+    h2 {
+      text-align: center;
+    }
     label {
+      font-weight: bold;
+      margin-top: 1rem;
       display: block;
-      margin-top: var(--spacing);
-      font-weight: 600;
     }
-    input, textarea {
+    textarea, input[type="date"] {
       width: 100%;
-      padding: 0.75rem;
+      padding: 0.5rem;
       font-size: 1rem;
-      margin-top: 0.3rem;
+      margin-top: 0.25rem;
+      border-radius: 4px;
       border: 1px solid #ccc;
-      border-radius: 6px;
       box-sizing: border-box;
     }
-    textarea { resize: vertical; }
     .button-row {
+      margin-top: 1.5rem;
       display: flex;
       flex-direction: column;
       gap: 0.5rem;
-      margin-top: var(--spacing);
     }
     button {
       padding: 0.75rem;
       font-size: 1rem;
       border: none;
-      border-radius: 6px;
-      background-color: #1976d2;
+      background-color: #007bff;
       color: white;
+      border-radius: 4px;
       cursor: pointer;
     }
-    button:hover { background-color: #1565c0; }
-    @media (min-width: 500px) {
-      .button-row {
-        flex-direction: row;
-        justify-content: space-between;
-      }
+    button:hover {
+      background-color: #0056b3;
     }
   </style>
 </head>
 <body>
   <div class="container">
-    <h2>Daily Structured Journal</h2>
+    <h2>Journal Entry</h2>
+
     <label for="entryDate">Date</label>
-    <input type="date" id="entryDate" required />
+    <input type="date" id="entryDate" />
+
     <label for="places">Places Visited</label>
     <textarea id="places" rows="2"></textarea>
+
     <label for="meetings">Meetings</label>
     <textarea id="meetings" rows="2"></textarea>
+
     <label for="appointments">Appointments</label>
     <textarea id="appointments" rows="2"></textarea>
+
     <label for="reminders">Things to Remember</label>
     <textarea id="reminders" rows="2"></textarea>
-    <label for="journalText">Journal Entry</label>
-    <textarea id="journalText" rows="6"></textarea>
+
+    <label for="journal">Journal Entry</label>
+    <textarea id="journal" rows="4"></textarea>
+
+    <label for="events">Upcoming Events</label>
+    <textarea id="events" rows="2"></textarea>
+
     <div class="button-row">
-      <button onclick="saveLocal()">Download as TXT</button>
-      <button onclick="authorizeAndUpload()">Sync to Google Drive</button>
+      <button onclick="saveLocal()">Save as TXT</button>
+      <button onclick="authorizeAndUpload()">Upload to Google Drive</button>
     </div>
   </div>
+
   <script>
-    const CLIENT_ID = 'YOUR_GOOGLE_CLIENT_ID_HERE';
+    const CLIENT_ID = '213451192363-pg97nc6g46a8qmj7utc6qrh912c15hcf.apps.googleusercontent.com';
     const SCOPES = 'https://www.googleapis.com/auth/drive.file';
     let tokenClient;
     let accessToken = null;
+
     function formatEntry() {
       const date = document.getElementById("entryDate").value;
       const places = document.getElementById("places").value.trim();
       const meetings = document.getElementById("meetings").value.trim();
       const appointments = document.getElementById("appointments").value.trim();
       const reminders = document.getElementById("reminders").value.trim();
-      const journal = document.getElementById("journalText").value.trim();
+      const journal = document.getElementById("journal").value.trim();
+      const events = document.getElementById("events").value.trim();
+
       if (!date) {
         alert("Please enter a date.");
         return null;
       }
-      const content =
+
+      const content = 
 `# ${date}
 ## Places Visited:
 ${places}
@@ -116,11 +127,15 @@ ${reminders}
 ## Journal Entry:
 ${journal}
 
+## Upcoming Events:
+${events}
+
 --------------------------------------
 
 `;
       return { content, filename: \`journal-\${date}.txt\` };
     }
+
     function saveLocal() {
       const entry = formatEntry();
       if (!entry) return;
@@ -130,55 +145,72 @@ ${journal}
       link.download = entry.filename;
       link.click();
     }
+
     function authorizeAndUpload() {
       const entry = formatEntry();
       if (!entry) return;
+
       tokenClient = google.accounts.oauth2.initTokenClient({
         client_id: CLIENT_ID,
         scope: SCOPES,
         callback: (tokenResponse) => {
-        accessToken = tokenResponse.access_token;
+          accessToken = tokenResponse.access_token;
           gapi.load('client', () => {
             gapi.client.init({}).then(() => {
-              uploadToDrive(entry.filename, entry.content);
+              createFolderAndUpload(entry.filename, entry.content);
             });
           });
         }
       });
+
       tokenClient.requestAccessToken();
     }
-    function uploadToDrive(filename, content) {
-      if (!accessToken) {
-        alert("Authorization failed or token is missing.");
-        return;
-      }
-      if (!accessToken) {
-        alert("Authorization failed or token is missing.");
-        return;
-      }
-      const fileMetadata = {
-        name: filename,
-        mimeType: 'text/plain'
-      };
-      const file = new Blob([content], { type: 'text/plain' });
-      const metadata = new FormData();
-      metadata.append('metadata', new Blob([JSON.stringify(fileMetadata)], { type: 'application/json' }));
-      metadata.append('file', file);
-      fetch('https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart', {
-        method: 'POST',
-        headers: new Headers({ 'Authorization': 'Bearer ' + accessToken }),
-        body: metadata
-      }).then(res => {
-        if (!res.ok) {
-          res.text().then(text => {
-            alert("Upload failed: " + text);
-          });
+
+    async function createFolderAndUpload(filename, content) {
+      try {
+        const folderRes = await gapi.client.drive.files.list({
+          q: "name='Journal' and mimeType='application/vnd.google-apps.folder'",
+          fields: "files(id)",
+        });
+
+        let folderId;
+        if (folderRes.result.files.length > 0) {
+          folderId = folderRes.result.files[0].id;
         } else {
-          alert("Uploaded to Google Drive!");
+          const createFolderRes = await gapi.client.drive.files.create({
+            resource: {
+              name: "Journal",
+              mimeType: "application/vnd.google-apps.folder",
+            },
+            fields: "id",
+          });
+          folderId = createFolderRes.result.id;
         }
-      }).catch(err => {
-        alert("Error uploading: " + err.message);
-      });
+
+        const metadata = new FormData();
+        metadata.append("metadata", new Blob([JSON.stringify({
+          name: filename,
+          parents: [folderId],
+          mimeType: "text/plain"
+        })], { type: "application/json" }));
+        metadata.append("file", new Blob([content], { type: "text/plain" }));
+
+        const res = await fetch("https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart", {
+          method: "POST",
+          headers: new Headers({ Authorization: "Bearer " + accessToken }),
+          body: metadata
+        });
+
+        if (!res.ok) {
+          const errText = await res.text();
+          throw new Error(errText);
+        }
+
+        alert("✅ Entry uploaded to Google Drive in 'Journal' folder.");
+      } catch (error) {
+        alert("Upload failed: " + error.message);
+        console.error(error);
+      }
     }
   </script>
 </body>
