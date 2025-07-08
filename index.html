@@ -87,6 +87,7 @@
     const CLIENT_ID = 'YOUR_GOOGLE_CLIENT_ID_HERE';
     const SCOPES = 'https://www.googleapis.com/auth/drive.file';
     let tokenClient;
+    let accessToken = null;
     function formatEntry() {
       const date = document.getElementById("entryDate").value;
       const places = document.getElementById("places").value.trim();
@@ -136,6 +137,7 @@ ${journal}
         client_id: CLIENT_ID,
         scope: SCOPES,
         callback: (tokenResponse) => {
+        accessToken = tokenResponse.access_token;
           gapi.load('client', () => {
             gapi.client.init({}).then(() => {
               uploadToDrive(entry.filename, entry.content);
@@ -146,7 +148,10 @@ ${journal}
       tokenClient.requestAccessToken();
     }
     function uploadToDrive(filename, content) {
-      const accessToken = gapi.client.getToken()?.access_token;
+      if (!accessToken) {
+        alert("Authorization failed or token is missing.");
+        return;
+      }
       if (!accessToken) {
         alert("Authorization failed or token is missing.");
         return;
